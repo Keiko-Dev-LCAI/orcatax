@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OrcaTax — Crypto Tax & P&L Reports</title>
+<style>
+  :root {
+    --bg: #0a0f1a;
+    --surface: #0f1828;
+    --border: rgba(255,255,255,0.08);
+    --cyan: #00d4ff;
+    --green: #00e676;
+    --red: #ff4444;
+    --yellow: #ffaa00;
+    --muted: #6b8099;
+    --text: #e0eaf5;
+    --purple: #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+  /* ── HEADER ── */
+  .header { background: rgba(0,0,0,0.4); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 100; }
+  .header-logo { font-size: 24px; font-weight: 800; color: var(--cyan); letter-spacing: -0.5px; }
+  .header-tag { font-size: 13px; color: var(--muted); margin-left: 4px; }
+  .header-badge { margin-left: auto; background: rgba(0,230,118,0.1); border: 1px solid rgba(0,230,118,0.3); color: var(--green); font-size: 12px; font-weight: 700; padding: 5px 14px; border-radius: 20px; }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; flex: 1; overflow: hidden; }
+  .sidebar { width: 480px; flex-shrink: 0; background: rgba(0,0,0,0.2); border-right: 1px solid var(--border); padding: 16px 0; height: 100%; overflow-y: auto; }
+  .nav-section { font-size: 22px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding: 0 36px 16px; margin-top: 28px; }
+  .nav-item { display: flex; align-items: center; gap: 20px; padding: 24px 36px; cursor: pointer; font-size: 28px; color: var(--muted); border-left: 5px solid transparent; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .nav-item.active { background: rgba(0,212,255,0.08); color: var(--cyan); border-left-color: var(--cyan); }
+  .nav-icon { font-size: 36px; width: 44px; text-align: center; }
+  .main { flex: 1; padding: 36px 44px; min-width: 0; height: 100%; overflow-y: auto; }
+  .page { display: none; }
+  .page.active { display: block; }
+  #page-home.active { height: 100%; display: flex; flex-direction: column; }
+  #page-home.active .capability-grid { flex: 1; min-height: 0; align-content: stretch; }
+
+  /* ── TYPOGRAPHY ── */
+  .page-title { font-size: 30px; font-weight: 800; margin-bottom: 6px; }
+  .page-sub { font-size: 15px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+
+  /* ── WHAT IT CAN / CANNOT DO ── */
+  .capability-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .cap-box { border-radius: 12px; padding: 22px 26px; }
+  .cap-can { background: rgba(0,230,118,0.05); border: 1px solid rgba(0,230,118,0.25); }
+  .cap-cannot { background: rgba(255,68,68,0.05); border: 1px solid rgba(255,68,68,0.2); }
+  .cap-title { font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 18px; }
+  .cap-can .cap-title { color: var(--green); }
+  .cap-cannot .cap-title { color: #ff6666; }
+  .cap-item { font-size: 17px; color: var(--text); line-height: 1.6; margin-bottom: 16px; display: flex; gap: 12px; align-items: flex-start; }
+  .cap-item span:first-child { flex: none; width: 18px; }
+  .cap-item span:last-child { flex: 1; }
+
+  /* ── CARDS ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; margin-bottom: 18px; }
+  .card-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+
+  /* ── INPUTS ── */
+  .input-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .input-field { flex: 1; background: rgba(0,0,0,0.35); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; color: var(--text); font-size: 14px; font-family: monospace; outline: none; transition: border-color 0.15s; }
+  .input-field:focus { border-color: var(--cyan); }
+  .input-field::placeholder { color: var(--muted); font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  .select-field { background: rgba(0,0,0,0.35); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; color: var(--text); font-size: 14px; outline: none; cursor: pointer; }
+  .select-field:focus { border-color: var(--cyan); }
+
+  /* ── BUTTONS ── */
+  .btn { border: none; border-radius: 8px; padding: 12px 24px; font-weight: 700; font-size: 14px; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-primary { background: var(--cyan); color: #000; }
+  .btn-primary:hover:not(:disabled) { opacity: 0.85; }
+  .btn-success { background: var(--green); color: #000; }
+  .btn-success:hover:not(:disabled) { opacity: 0.85; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+  .btn-sm { padding: 8px 16px; font-size: 13px; }
+
+  /* ── WALLET LIST ── */
+  .wallet-tag { display: inline-flex; align-items: center; gap: 8px; background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2); border-radius: 20px; padding: 5px 12px; font-size: 13px; font-family: monospace; color: var(--cyan); margin: 4px; }
+  .wallet-tag-remove { cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1; padding: 0 2px; }
+  .wallet-tag-remove:hover { color: var(--red); }
+  .wallets-display { min-height: 36px; margin-bottom: 12px; }
+
+  /* ── CHAIN CHIPS ── */
+  .chain-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chain-chip { border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); color: var(--muted); background: rgba(0,0,0,0.2); transition: all 0.15s; }
+  .chain-chip.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,0.1); }
+  .chain-chip:hover:not(.active) { border-color: rgba(255,255,255,0.2); color: var(--text); }
+
+  /* ── RESULTS ── */
+  .result-hidden { display: none; }
+  .pnl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+  .pnl-card { background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .pnl-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .pnl-value { font-size: 22px; font-weight: 800; }
+  .pnl-up { color: var(--green); }
+  .pnl-down { color: var(--red); }
+  .pnl-neutral { color: var(--text); }
+  .pnl-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* ── KOINLY-STYLE STATS BAR ── */
+  .stats-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; background: rgba(0,0,0,0.35); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
+  .stat-item { padding: 14px 16px; border-right: 1px solid var(--border); }
+  .stat-item:last-child { border-right: none; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; white-space: nowrap; }
+  .stat-value { font-size: 18px; font-weight: 800; line-height: 1.2; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* ── HOLDINGS ROI COLOURS ── */
+  .roi-up { color: var(--green); }
+  .roi-down { color: var(--red); }
+
+  .tx-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+  .tx-table th { text-align: left; padding: 8px 12px; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); }
+  .tx-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .tx-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .tx-gain { color: var(--green); font-weight: 600; }
+  .tx-loss { color: var(--red); font-weight: 600; }
+  .tx-hash { font-family: monospace; color: var(--cyan); font-size: 12px; }
+  .tx-hash a { color: var(--cyan); text-decoration: none; }
+  .tx-hash a:hover { text-decoration: underline; }
+
+  /* ── LOADER ── */
+  .loader { display: none; align-items: center; gap: 12px; padding: 20px 0; color: var(--muted); font-size: 14px; }
+  .loader.active { display: flex; }
+  .spinner { width: 20px; height: 20px; border: 2px solid rgba(0,212,255,0.2); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── PAYMENT GATE ── */
+  .pay-gate { background: rgba(167,139,250,0.06); border: 1px solid rgba(167,139,250,0.25); border-radius: 14px; padding: 24px; margin-top: 18px; }
+  .pay-gate-title { font-size: 17px; font-weight: 700; color: var(--purple); margin-bottom: 8px; }
+  .pay-gate-desc { font-size: 14px; color: var(--muted); margin-bottom: 18px; line-height: 1.65; }
+  .pay-price-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .pay-price { font-size: 22px; font-weight: 800; color: var(--text); }
+  .pay-lcai { font-size: 14px; color: var(--muted); }
+  .pay-status { font-size: 13px; margin-top: 10px; padding: 10px 14px; border-radius: 8px; display: none; }
+  .pay-status.show { display: block; }
+  .pay-status.pending { background: rgba(0,212,255,0.08); color: var(--cyan); }
+  .pay-status.success { background: rgba(0,230,118,0.08); color: var(--green); }
+  .pay-status.error { background: rgba(255,68,68,0.08); color: var(--red); }
+
+  /* ── INFO CARDS ── */
+  .info-banner { border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
+  .info-blue { background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.2); }
+  .info-yellow { background: rgba(255,170,0,0.06); border: 1px solid rgba(255,170,0,0.25); }
+  .info-banner p { font-size: 14px; line-height: 1.65; color: var(--muted); }
+  .info-banner p strong { color: var(--text); }
+  .info-banner-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+  .info-blue .info-banner-title { color: var(--cyan); }
+  .info-yellow .info-banner-title { color: var(--yellow); }
+
+  /* ── STEPS ── */
+  .steps { list-style: none; counter-reset: steps; }
+  .steps li { counter-increment: steps; display: flex; gap: 14px; margin-bottom: 14px; font-size: 14px; line-height: 1.65; color: var(--muted); }
+  .steps li::before { content: counter(steps); background: rgba(0,212,255,0.15); color: var(--cyan); font-weight: 700; font-size: 13px; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .steps li strong { color: var(--text); }
+
+  /* ── FOOTER / OrcaPod ── */
+  .orca-pod { background:rgba(0,0,0,0.25);border-top:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:center }
+  .orca-pod a { color:var(--accent);text-decoration:none;font-size:14px;font-weight:700;padding:7px 18px;border:1px solid rgba(0,180,216,0.3);border-radius:20px;transition:all 0.15s }
+  .orca-pod a:hover { background:rgba(0,180,216,0.1) }
+  .pod-link { background: rgba(15,24,40,1); border: 1px solid rgba(30,45,74,1); border-radius: 8px; padding: 5px 12px; font-size: 12px; color: #e8eaf0; text-decoration: none; white-space: nowrap; transition: all .2s; }
+  .pod-link:hover { border-color: var(--cyan); color: var(--cyan); }
+
+  /* ── WALLET PICKER MODAL ── */
+  .wallet-picker-list { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
+  .wallet-picker-item { display: flex; align-items: center; gap: 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; cursor: pointer; transition: border-color 0.15s; }
+  .wallet-picker-item:hover { border-color: var(--cyan); }
+  .wallet-picker-item.selected { border-color: var(--cyan); background: rgba(0,212,255,0.07); }
+  .wallet-picker-item input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--cyan); cursor: pointer; flex-shrink: 0; }
+  .wallet-picker-addr { font-family: monospace; font-size: 14px; color: var(--text); }
+  .wallet-picker-short { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* ── DISCLAIMER MODAL ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #0f1828; border: 1px solid var(--border); border-radius: 16px; max-width: 620px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 28px 32px; }
+  .modal h2 { font-size: 20px; margin-bottom: 16px; }
+  .modal p, .modal li { font-size: 14px; line-height: 1.7; color: var(--muted); margin-bottom: 10px; }
+  .modal strong { color: var(--text); }
+  .modal-close { float: right; background: none; border: none; color: var(--muted); font-size: 24px; cursor: pointer; margin-top: -4px; }
+  .modal-close:hover { color: var(--text); }
+
+  /* ── ADVANCED SETTINGS ── */
+  .adv-settings { border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-top: 12px; }
+  .adv-settings summary { cursor: pointer; font-size: 13px; color: var(--muted); font-weight: 600; user-select: none; }
+  .adv-settings summary:hover { color: var(--text); }
+  .adv-settings-body { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .toggle-row { display: flex; align-items: center; gap: 12px; }
+  .toggle-row label { font-size: 13px; color: var(--text); cursor: pointer; line-height: 1.4; }
+  .toggle-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--cyan); flex-shrink: 0; }
+  .toggle-row input[type=number] { width: 80px; background: rgba(0,0,0,0.35); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: var(--text); font-size: 13px; outline: none; }
+  .toggle-row input[type=number]:focus { border-color: var(--cyan); }
+  .stat-sub2 { font-size: 10px; color: var(--muted); margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .st-label { color: var(--yellow); }
+  .lt-label { color: var(--purple); }
+
+  /* ── MISC ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 8px; border-radius: 4px; }
+  .badge-free { background: rgba(0,230,118,0.15); color: var(--green); }
+  .badge-paid { background: rgba(167,139,250,0.15); color: var(--purple); }
+  .error-box { background: rgba(255,68,68,0.07); border: 1px solid rgba(255,68,68,0.25); border-radius: 10px; padding: 14px 18px; font-size: 14px; color: #ff8888; display: none; }
+  .error-box.show { display: block; }
+  .free-limit-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  @media (max-width: 768px) {
+    .layout { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid var(--border); display: flex; overflow-x: auto; padding: 8px; }
+    .nav-section { display: none; }
+    .nav-item { flex-direction: column; gap: 4px; padding: 10px 14px; font-size: 11px; border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+    .nav-item.active { border-left: none; border-bottom-color: var(--cyan); }
+    .main { padding: 20px 16px; }
+    .capability-grid { grid-template-columns: 1fr; }
+    .pnl-grid { grid-template-columns: 1fr 1fr; }
+    .stats-bar { grid-template-columns: repeat(3, 1fr); }
+    .stat-item { border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <span class="header-logo">🐬 OrcaTax</span>
+  <span class="header-tag">Crypto Tax & P&L Reports</span>
+  <span class="header-badge">Beta</span>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" onclick="showPage('home')">
+      <span class="nav-icon">🏠</span> Home
+    </div>
+    <div class="nav-item" onclick="showPage('pnl')">
+      <span class="nav-icon">📊</span> P&amp;L Check
+    </div>
+    <div class="nav-item" onclick="showPage('report')">
+      <span class="nav-icon">📄</span> Tax Report
+    </div>
+    <div class="nav-section">Info</div>
+    <div class="nav-item" onclick="showPage('how')">
+      <span class="nav-icon">❓</span> How It Works
+    </div>
+    <div class="nav-item" onclick="showPage('chains')">
+      <span class="nav-icon">🔗</span> Supported Chains
+    </div>
+    <div class="nav-item" onclick="openModal('modal-disclaimer')">
+      <span class="nav-icon">📋</span> Disclaimer
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- HOME PAGE -->
+    <div id="page-home" class="page active">
+      <div class="page-title">📊 OrcaTax</div>
+      <div class="page-sub">Crypto P&amp;L and tax reports — free check, $5 full report. No account, no subscription, nothing stored.</div>
+
+      <!-- WHAT IT CAN/CANNOT DO -->
+      <div class="capability-grid">
+        <div class="cap-box cap-can">
+          <div class="cap-title">✅ What OrcaTax Does</div>
+          <div class="cap-item"><span>✓</span><span>P&amp;L from on-chain txs — Lightchain, ETH, BNB, Polygon, Arbitrum</span></div>
+          <div class="cap-item"><span>✓</span><span>CEX CSV import — Kraken, Coinbase, Binance, BitMart</span></div>
+          <div class="cap-item"><span>✓</span><span>FIFO / LIFO / HIFO cost basis + short &amp; long-term gains split</span></div>
+          <div class="cap-item"><span>✓</span><span>Downloadable CSV &amp; PDF tax report — $5 one-time in LCAI</span></div>
+          <div class="cap-item"><span>✓</span><span>Free P&amp;L preview — up to 3 wallets, no payment needed</span></div>
+          <div class="cap-item"><span>✓</span><span>Zero storage — your data never touches a database</span></div>
+        </div>
+        <div class="cap-box cap-cannot">
+          <div class="cap-title">❌ What OrcaTax Does NOT Do</div>
+          <div class="cap-item"><span>✗</span><span>Provide tax advice — always verify with a tax professional</span></div>
+          <div class="cap-item"><span>✗</span><span>Support Solana or Bitcoin (EVM chains only, for now)</span></div>
+          <div class="cap-item"><span>✗</span><span>Connect directly to exchanges — you export the CSV</span></div>
+          <div class="cap-item"><span>✗</span><span>Know your country's specific tax rules — you apply them</span></div>
+          <div class="cap-item"><span>✗</span><span>Guarantee 100% accuracy — cross-check with your own records</span></div>
+          <div class="cap-item"><span>✗</span><span>Store, sell, or share any of your financial data — ever</span></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div class="info-banner info-yellow" style="margin-bottom:0;">
+          <div class="info-banner-title">⚠️ Not Tax Advice</div>
+          <p>OrcaTax is a calculation tool only. Always consult a qualified tax professional before filing.</p>
+        </div>
+        <div class="info-banner info-blue" style="margin-bottom:0;">
+          <div class="info-banner-title">🔒 Privacy First</div>
+          <p>Your wallet and trade data is <strong>never stored</strong>. Fetched, calculated, returned — then gone.</p>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="showPage('pnl')">📊 Check My P&amp;L — Free</button>
+        <button class="btn btn-outline" onclick="showPage('report')">📄 Get Full Tax Report — $5</button>
+      </div>
+    </div>
+
+    <!-- P&L PAGE -->
+    <div id="page-pnl" class="page">
+      <div class="page-title">📊 P&amp;L Check</div>
+      <div class="page-sub">Enter one or more wallet addresses to see your profit &amp; loss summary. <span class="badge badge-free">Free</span></div>
+
+      <div class="card">
+        <div class="card-title">🔗 Wallet Addresses</div>
+        <div class="wallets-display" id="pnl-wallets-display"></div>
+        <div class="input-row" style="margin-bottom:10px;">
+          <button class="btn btn-outline" id="pnl-connect-btn" onclick="connectWalletPnL()">🔗 Connect Wallet</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center;">— or paste address manually —</div>
+        <div class="input-row">
+          <input class="input-field" id="pnl-wallet-input" placeholder="0x... wallet address" />
+          <button class="btn btn-outline btn-sm" onclick="addWallet('pnl')">+ Add</button>
+        </div>
+        <div class="free-limit-note">Add as many wallets as you need. To add a different wallet via Connect, switch accounts in Trust Wallet first, then tap Connect again.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⛓️ Chains to Include</div>
+        <div class="chain-chips" id="pnl-chains">
+          <div class="chain-chip active" data-chain="lightchain" onclick="toggleChip(this,'pnl')">🔵 Lightchain</div>
+          <div class="chain-chip active" data-chain="eth" onclick="toggleChip(this,'pnl')">🔷 Ethereum</div>
+          <div class="chain-chip active" data-chain="bsc" onclick="toggleChip(this,'pnl')">🟡 BNB Chain</div>
+          <div class="chain-chip" data-chain="polygon" onclick="toggleChip(this,'pnl')">🟣 Polygon</div>
+          <div class="chain-chip" data-chain="arbitrum" onclick="toggleChip(this,'pnl')">🔵 Arbitrum</div>
+        </div>
+        <div class="input-row" style="align-items:center;gap:16px;flex-wrap:wrap;">
+          <div>
+            <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px;">Tax Year</label>
+            <select class="select-field" id="pnl-year"></select>
+          </div>
+          <div>
+            <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px;">Cost Basis Method</label>
+            <select class="select-field" id="pnl-method">
+              <option value="fifo">FIFO</option>
+              <option value="lifo">LIFO</option>
+              <option value="hifo">HIFO</option>
+            </select>
+          </div>
+          <div style="margin-top:20px;">
+            <button class="btn btn-primary" id="pnl-run-btn" onclick="runPnL()">Run P&amp;L Check</button>
+          </div>
+        </div>
+
+        <details class="adv-settings">
+          <summary>⚙️ Advanced Settings</summary>
+          <div class="adv-settings-body">
+            <div class="toggle-row">
+              <input type="checkbox" id="pnl-realize-crypto" checked>
+              <label for="pnl-realize-crypto">Treat crypto→crypto swaps as taxable events <span style="color:var(--muted);font-size:12px;">(IRS default: ON)</span></label>
+            </div>
+            <div class="toggle-row">
+              <input type="checkbox" id="pnl-wallet-based">
+              <label for="pnl-wallet-based">Track cost basis per wallet (vs pooled across all wallets)</label>
+            </div>
+            <div class="toggle-row">
+              <label for="pnl-dust">Ignore transactions under</label>
+              <input type="number" id="pnl-dust" value="0" min="0" step="0.01" placeholder="0">
+              <label for="pnl-dust" style="color:var(--muted);">USD <span style="font-size:11px;">(0 = show all, $1 = Koinly default)</span></label>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="loader" id="pnl-loader">
+        <div class="spinner"></div>
+        <span id="pnl-loader-msg">Fetching transaction history...</span>
+      </div>
+      <div class="error-box" id="pnl-error"></div>
+
+      <!-- RESULTS -->
+      <div id="pnl-results" class="result-hidden">
+
+        <!-- KOINLY-STYLE STATS BAR -->
+        <div class="stats-bar">
+          <div class="stat-item">
+            <div class="stat-label">In</div>
+            <div class="stat-value pnl-neutral" id="stat-in">—</div>
+            <div class="stat-sub">total received</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Out</div>
+            <div class="stat-value pnl-neutral" id="stat-out">—</div>
+            <div class="stat-sub">total sent/sold</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Realized Gain/Loss</div>
+            <div class="stat-value" id="stat-realized">—</div>
+            <div class="stat-sub" id="stat-realized-sub">for selected year</div>
+            <div class="stat-sub2" id="stat-st-lt"></div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Unrealized Gain/Loss</div>
+            <div class="stat-value" id="stat-unrealized">—</div>
+            <div class="stat-sub">current holdings</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Portfolio Value</div>
+            <div class="stat-value pnl-neutral" id="stat-portfolio">—</div>
+            <div class="stat-sub">holdings today</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Transactions</div>
+            <div class="stat-value pnl-neutral" id="pnl-tx-count">—</div>
+            <div class="stat-sub" id="pnl-chains-sub">chains scanned</div>
+          </div>
+        </div>
+
+        <!-- HOLDINGS TABLE -->
+        <div class="card" id="pnl-holdings-card" style="display:none;">
+          <div class="card-title">📦 Current Holdings</div>
+          <div style="overflow-x:auto;">
+            <table class="tx-table">
+              <thead>
+                <tr>
+                  <th>Asset</th>
+                  <th>Chain</th>
+                  <th>Balance</th>
+                  <th>Cost Basis</th>
+                  <th>Market Value</th>
+                  <th>Unrealized</th>
+                  <th>ROI</th>
+                </tr>
+              </thead>
+              <tbody id="pnl-holdings-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Recent Transactions <span style="font-size:12px;color:var(--muted);font-weight:400;">(free preview — last 20)</span></div>
+          <div style="overflow-x:auto;">
+            <table class="tx-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Chain</th>
+                  <th>Type</th>
+                  <th>Token</th>
+                  <th>Amount</th>
+                  <th>Price At Time</th>
+                  <th>Gain/Loss</th>
+                  <th>Term</th>
+                  <th>Tx</th>
+                </tr>
+              </thead>
+              <tbody id="pnl-tx-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- UPSELL TO FULL REPORT -->
+        <div class="pay-gate">
+          <div class="pay-gate-title">📄 Get Your Full Tax Report</div>
+          <div class="pay-gate-desc">The free P&amp;L shows your last 20 transactions. The full report includes every transaction for the selected tax year, proper cost basis calculations, capital gains breakdown, and a downloadable CSV &amp; PDF formatted for your accountant or tax software.</div>
+          <div class="pay-price-row">
+            <span class="pay-price">$5 USD</span>
+            <span class="pay-lcai">≈ <span id="pnl-lcai-equiv">calculating...</span> LCAI</span>
+            <span style="font-size:13px;color:var(--muted);">one-time · download immediately · no account needed</span>
+          </div>
+          <button class="btn btn-success" onclick="showPage('report')">Get Full Report →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORT PAGE -->
+    <div id="page-report" class="page">
+      <div class="page-title">📄 Full Tax Report</div>
+      <div class="page-sub">Complete transaction history with cost basis, gains/losses, and downloadable files for your tax filing. <span class="badge badge-paid">$5 USD in LCAI</span></div>
+
+      <div class="info-banner info-blue" style="margin-bottom:20px;">
+        <div class="info-banner-title">💳 How Payment Works</div>
+        <p>Pay once in LCAI on the Lightchain network. Your report generates instantly and downloads to your device. <strong>Nothing is stored.</strong> If you need the report again, you'll need to pay again — so save the download.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔗 Wallet Addresses</div>
+        <div class="wallets-display" id="report-wallets-display"></div>
+        <div class="input-row" style="margin-bottom:10px;">
+          <button class="btn btn-outline" id="report-connect-addr-btn" onclick="connectWalletReport()">🔗 Connect Wallet</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center;">— or paste address manually —</div>
+        <div class="input-row">
+          <input class="input-field" id="report-wallet-input" placeholder="0x... wallet address" />
+          <button class="btn btn-outline btn-sm" onclick="addWallet('report')">+ Add</button>
+        </div>
+        <div class="free-limit-note">Add all wallets you want included in the report. No limit.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📁 CEX Import (Optional)</div>
+        <p style="font-size:14px;color:var(--muted);margin-bottom:14px;line-height:1.6;">If you traded on Kraken, Coinbase, or Binance, export your trade history as a CSV and upload it here. It will be included in your report and immediately discarded after processing — never stored.</p>
+        <div class="input-row" style="flex-wrap:wrap;gap:10px;">
+          <select class="select-field" id="cex-type">
+            <option value="">Select Exchange...</option>
+            <option value="kraken">Kraken</option>
+            <option value="coinbase">Coinbase</option>
+            <option value="binance">Binance</option>
+            <option value="bitmart">BitMart</option>
+          </select>
+          <input type="file" id="cex-file" accept=".csv" style="display:none;" onchange="handleCexFile(this)">
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('cex-file').click()">📂 Upload CSV</button>
+          <span id="cex-file-name" style="font-size:13px;color:var(--muted);align-self:center;"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚙️ Report Settings</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+          <div>
+            <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px;">Tax Year</label>
+            <select class="select-field" id="report-year"></select>
+          </div>
+          <div>
+            <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px;">Cost Basis Method</label>
+            <select class="select-field" id="report-method">
+              <option value="fifo">FIFO (First In, First Out)</option>
+              <option value="lifo">LIFO (Last In, First Out)</option>
+              <option value="hifo">HIFO (Highest In, First Out)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px;">Chains</label>
+            <div class="chain-chips" id="report-chains" style="margin-bottom:0;">
+              <div class="chain-chip active" data-chain="lightchain" onclick="toggleChip(this,'report')">🔵 Lightchain</div>
+              <div class="chain-chip active" data-chain="eth" onclick="toggleChip(this,'report')">🔷 Ethereum</div>
+              <div class="chain-chip active" data-chain="bsc" onclick="toggleChip(this,'report')">🟡 BNB Chain</div>
+              <div class="chain-chip" data-chain="polygon" onclick="toggleChip(this,'report')">🟣 Polygon</div>
+              <div class="chain-chip" data-chain="arbitrum" onclick="toggleChip(this,'report')">🔵 Arbitrum</div>
+            </div>
+          </div>
+        </div>
+
+        <details class="adv-settings" style="margin-top:16px;">
+          <summary>⚙️ Advanced Settings</summary>
+          <div class="adv-settings-body">
+            <div class="toggle-row">
+              <input type="checkbox" id="report-realize-crypto" checked>
+              <label for="report-realize-crypto">Treat crypto→crypto swaps as taxable events <span style="color:var(--muted);font-size:12px;">(IRS default: ON)</span></label>
+            </div>
+            <div class="toggle-row">
+              <input type="checkbox" id="report-wallet-based">
+              <label for="report-wallet-based">Track cost basis per wallet (vs pooled across all wallets)</label>
+            </div>
+            <div class="toggle-row">
+              <label for="report-dust">Ignore transactions under</label>
+              <input type="number" id="report-dust" value="0" min="0" step="0.01" placeholder="0">
+              <label for="report-dust" style="color:var(--muted);">USD <span style="font-size:11px;">(0 = show all, $1 = Koinly default)</span></label>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- PAYMENT -->
+      <div class="pay-gate">
+        <div class="pay-gate-title">💳 Pay &amp; Download</div>
+        <div class="pay-gate-desc">Connect your Trust Wallet on Lightchain mainnet to pay. After payment confirms on-chain, your report generates and downloads automatically.</div>
+        <div class="pay-price-row">
+          <span class="pay-price">$5 USD</span>
+          <span class="pay-lcai">≈ <span id="report-lcai-equiv">calculating...</span> LCAI</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-outline" id="connect-btn" onclick="connectWallet()">🔗 Connect Wallet</button>
+          <button class="btn btn-success" id="pay-btn" disabled onclick="payAndGenerate()">💳 Pay &amp; Generate Report</button>
+        </div>
+        <div id="report-pay-status" class="pay-status"></div>
+        <div class="loader" id="report-loader" style="margin-top:12px;">
+          <div class="spinner"></div>
+          <span id="report-loader-msg">Generating your report...</span>
+        </div>
+      </div>
+
+      <div class="error-box" id="report-error" style="margin-top:14px;"></div>
+    </div>
+
+    <!-- HOW IT WORKS -->
+    <div id="page-how" class="page">
+      <div class="page-title">❓ How OrcaTax Works</div>
+      <div class="page-sub">A plain-English guide to what happens when you use OrcaTax.</div>
+
+      <div class="card">
+        <div class="card-title">📊 Free P&amp;L Check</div>
+        <ol class="steps">
+          <li><strong>Enter your wallet address(es)</strong> — any EVM wallet (Lightchain, Ethereum, BNB Chain etc.)</li>
+          <li><strong>Select chains and tax year</strong> — OrcaTax fetches your transactions from each chain's public explorer</li>
+          <li><strong>Historical prices are looked up</strong> — OrcaTax checks what each token was worth on the date of each transaction using CoinGecko's price history</li>
+          <li><strong>Gains and losses are calculated</strong> — buy price vs. sell price = gain or loss for each trade</li>
+          <li><strong>Results show instantly</strong> — free preview shows your last 20 transactions and total P&amp;L</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📄 Full Tax Report</div>
+        <ol class="steps">
+          <li><strong>Same as above</strong> — but covers your entire selected tax year, all transactions, no limit</li>
+          <li><strong>Optional: upload CEX CSV</strong> — export your Kraken/Coinbase/Binance trade history and include it in the report</li>
+          <li><strong>Choose your cost basis method</strong> — FIFO (most common), LIFO, or HIFO</li>
+          <li><strong>Pay $5 in LCAI</strong> — one-time payment on Lightchain mainnet, confirms in seconds</li>
+          <li><strong>Download your report</strong> — CSV for tax software, PDF for your accountant. Save it — nothing is stored.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔒 Privacy — How Your Data Is Handled</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:10px;">When you enter a wallet address, OrcaTax reads <strong style="color:var(--text);">publicly available</strong> blockchain data — the same data anyone can see on Etherscan or Lightscan. No private keys, no passwords, no personal information of any kind is required or collected.</p>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:10px;">Your transaction data is fetched, calculated, and returned to you. <strong style="color:var(--text);">It is never stored, logged, or associated with any identity.</strong> The moment your report downloads, all data is discarded from the server.</p>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;">CEX CSV files are processed in memory and immediately deleted. They are never written to disk or stored in any database.</p>
+      </div>
+    </div>
+
+    <!-- CHAINS PAGE -->
+    <div id="page-chains" class="page">
+      <div class="page-title">🔗 Supported Chains</div>
+      <div class="page-sub">OrcaTax is rolling out chain support in phases. EVM chains first — they share the same architecture so adding more is straightforward.</div>
+
+      <div class="card">
+        <div class="card-title">✅ Phase 1 — EVM Chains (Available Now)</div>
+        <div style="display:grid;gap:12px;">
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid rgba(0,230,118,0.2);">
+            <span style="font-size:24px;">🔵</span>
+            <div>
+              <div style="font-weight:700;color:var(--green);">Lightchain AI</div>
+              <div style="font-size:13px;color:var(--muted);">Native LCAI, WLCAI, bridged USDT — Explorer: mainnet.lightscan.app</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid rgba(0,230,118,0.2);">
+            <span style="font-size:24px;">🔷</span>
+            <div>
+              <div style="font-weight:700;color:var(--green);">Ethereum</div>
+              <div style="font-size:13px;color:var(--muted);">ETH, ERC-20 tokens (LCAI, USDT, USDC etc.) — Explorer: etherscan.io</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid rgba(0,230,118,0.2);">
+            <span style="font-size:24px;">🟡</span>
+            <div>
+              <div style="font-weight:700;color:var(--green);">BNB Chain</div>
+              <div style="font-size:13px;color:var(--muted);">BNB, BEP-20 tokens — Explorer: bscscan.com</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid rgba(0,230,118,0.2);">
+            <span style="font-size:24px;">🟣</span>
+            <div>
+              <div style="font-weight:700;color:var(--green);">Polygon</div>
+              <div style="font-size:13px;color:var(--muted);">POL, ERC-20 tokens — Explorer: polygonscan.com</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;border:1px solid rgba(0,230,118,0.2);">
+            <span style="font-size:24px;">🔵</span>
+            <div>
+              <div style="font-weight:700;color:var(--green);">Arbitrum</div>
+              <div style="font-size:13px;color:var(--muted);">ETH on Arbitrum, ERC-20 tokens — Explorer: arbiscan.io</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📋 Phase 2 — CEX Import (Available Now)</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:12px;">Export your trade history CSV from any supported exchange and upload it to OrcaTax. No API key or account connection required.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+          <span style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;">Kraken</span>
+          <span style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;">Coinbase</span>
+          <span style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;">Binance</span>
+          <span style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;">BitMart</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🚧 Phase 3 — Coming Later</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <span style="background:rgba(255,170,0,0.08);border:1px solid rgba(255,170,0,0.25);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--yellow);">Solana</span>
+          <span style="background:rgba(255,170,0,0.08);border:1px solid rgba(255,170,0,0.25);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--yellow);">Bitcoin</span>
+          <span style="background:rgba(255,170,0,0.08);border:1px solid rgba(255,170,0,0.25);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--yellow);">Base</span>
+          <span style="background:rgba(255,170,0,0.08);border:1px solid rgba(255,170,0,0.25);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--yellow);">Optimism</span>
+          <span style="background:rgba(255,170,0,0.08);border:1px solid rgba(255,170,0,0.25);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--yellow);">More CEX platforms</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end main -->
+</div><!-- end layout -->
+
+<!-- ── ORCA POD LINK ── -->
+<div style="text-align:center;padding:16px 20px;border-top:1px solid rgba(255,255,255,0.07);">
+  <a href="https://keiko-dev-lcai.github.io/orcapod/" target="_blank" style="color:#7ec8e3;font-size:13px;text-decoration:none;font-weight:600;letter-spacing:.02em;">🐬 Other Orca dApps →</a>
+</div>
+
+<!-- WALLET PICKER MODAL -->
+<div id="modal-wallet-picker" class="modal-overlay">
+  <div class="modal" style="max-width:480px;">
+    <button class="modal-close" onclick="closeModal('modal-wallet-picker')">×</button>
+    <h2>🔗 Select Wallets to Add</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:4px;">Check the wallets you want to include, then tap Add Selected.</p>
+    <div id="wallet-picker-list" class="wallet-picker-list"></div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="btn btn-primary" onclick="addPickedWallets()" style="flex:1;">✓ Add Selected</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-wallet-picker')" style="flex:1;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- DISCLAIMER MODAL -->
+<div id="modal-disclaimer" class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-disclaimer')">×</button>
+    <h2>📋 OrcaTax — Disclaimer</h2>
+    <p><strong>Not Tax Advice.</strong> OrcaTax is a calculation tool provided for informational purposes only. It is not a licensed tax service, financial advisor, or CPA. Tax laws vary by jurisdiction and individual situation. Always consult a qualified tax professional before filing any tax return. Nothing on this platform constitutes legal, financial, or tax advice of any kind.</p>
+    <p><strong>No Guarantee of Accuracy.</strong> OrcaTax relies on third-party blockchain explorers, price data APIs, and user-provided CSV files. Data may be incomplete, delayed, missing, or inaccurate. Results are estimates only. Always cross-check all output against your own transaction records before relying on any figures.</p>
+    <p><strong>Service Availability.</strong> OrcaTax is provided on a best-effort basis with no uptime guarantee. The service may be interrupted, degraded, or permanently discontinued at any time, with or without notice. The developer is under no obligation to maintain, update, or continue operating this tool. Use of the service may be suspended or terminated at any time for any reason.</p>
+    <p><strong>Third-Party Dependence.</strong> OrcaTax depends on third-party services including Lightchain RPC nodes, Etherscan, CoinGecko, and Railway cloud infrastructure. Outages or changes to any of these services may cause OrcaTax to malfunction, return incorrect data, or become unavailable. The developer is not responsible for failures caused by third-party services.</p>
+    <p><strong>No Refunds.</strong> All payments are made in LCAI on the Lightchain blockchain and are final and irreversible. No refunds will be issued under any circumstances, including but not limited to: service interruptions or outages, inaccurate or incomplete data, unsatisfactory output, user error, duplicate payments, or permanent discontinuation of the service. By making a payment you acknowledge and accept this policy.</p>
+    <p><strong>Privacy.</strong> OrcaTax does not store, sell, or share any user data. Wallet addresses and transaction data are fetched on demand and discarded immediately after processing. CEX CSV files are processed in memory only and never written to disk or stored. The developer makes no warranty regarding the security of data in transit.</p>
+    <p><strong>Limitation of Liability.</strong> OrcaTax is provided as-is, without warranty of any kind, express or implied. To the fullest extent permitted by law, the developer shall not be liable for any direct, indirect, incidental, special, consequential, or punitive damages of any kind, including but not limited to: financial loss, incorrect tax filings, tax penalties or interest, audit costs, missed deadlines, loss of data, or any other damages arising from or related to the use or inability to use this tool, even if the developer has been advised of the possibility of such damages.</p>
+    <p><strong>Assumption of Risk.</strong> By using OrcaTax you acknowledge that you have read and understood this disclaimer in full, that you are using the tool entirely at your own risk, and that you accept sole responsibility for any decisions made based on its output.</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:16px;">Last updated: June 2026 · OrcaTax — Built on Lightchain</p>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+const pnlWallets = [];
+const reportWallets = [];
+let connectedWallet = null;
+let lcaiPriceUSD = null;
+let cexFileData = null;
+
+const BACKEND = 'https://web-production-a526.up.railway.app';
+const FEE_WALLET = '0x6518fD26a7aD2Fe1bA80De5f279Ee59F55C0A9bA';
+const LIGHTCHAIN_CHAIN_ID_HEX = '0x23F0';
+const LIGHTCHAIN_RPC = 'https://rpc.mainnet.lightchain.ai';
+const REPORT_PRICE_USD = 5;
+
+const CHAIN_EXPLORERS = {
+  lightchain: 'https://mainnet.lightscan.app/tx/',
+  eth: 'https://etherscan.io/tx/',
+  bsc: 'https://bscscan.com/tx/',
+  polygon: 'https://polygonscan.com/tx/',
+  arbitrum: 'https://arbiscan.io/tx/'
+};
+
+// ── Navigation ─────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  const navMap = { home: 0, pnl: 1, report: 2, how: 3, chains: 4 };
+  const items = document.querySelectorAll('.nav-item');
+  if (navMap[id] !== undefined) items[navMap[id]].classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ── Chain chips ────────────────────────────────────────
+function toggleChip(el, scope) {
+  el.classList.toggle('active');
+}
+function getActiveChains(scope) {
+  return Array.from(document.querySelectorAll('#' + scope + '-chains .chain-chip.active'))
+    .map(c => c.dataset.chain);
+}
+
+// ── Wallet management ──────────────────────────────────
+function addWallet(scope) {
+  const input = document.getElementById(scope + '-wallet-input');
+  const addr = input.value.trim();
+  if (!addr) return;
+  if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) {
+    alert('Please enter a valid 0x wallet address (42 characters).');
+    return;
+  }
+  const list = scope === 'pnl' ? pnlWallets : reportWallets;
+  // No wallet limit on P&L check
+  if (list.includes(addr.toLowerCase())) { alert('Address already added.'); return; }
+  list.push(addr.toLowerCase());
+  input.value = '';
+  renderWallets(scope);
+}
+
+document.getElementById('pnl-wallet-input').addEventListener('keydown', e => { if (e.key === 'Enter') addWallet('pnl'); });
+document.getElementById('report-wallet-input').addEventListener('keydown', e => { if (e.key === 'Enter') addWallet('report'); });
+
+function removeWallet(scope, addr) {
+  const list = scope === 'pnl' ? pnlWallets : reportWallets;
+  const idx = list.indexOf(addr);
+  if (idx > -1) list.splice(idx, 1);
+  renderWallets(scope);
+}
+
+function renderWallets(scope) {
+  const list = scope === 'pnl' ? pnlWallets : reportWallets;
+  const el = document.getElementById(scope + '-wallets-display');
+  if (list.length === 0) { el.innerHTML = '<span style="font-size:13px;color:var(--muted);">No wallets added yet.</span>'; return; }
+  el.innerHTML = list.map(a =>
+    '<span class="wallet-tag">' + a.slice(0,6) + '...' + a.slice(-4) +
+    '<span class="wallet-tag-remove" onclick="removeWallet(\'' + scope + '\',\'' + a + '\')">×</span></span>'
+  ).join('');
+}
+renderWallets('pnl');
+renderWallets('report');
+
+// ── LCAI Price ─────────────────────────────────────────
+async function fetchLCAIPrice() {
+  try {
+    const resp = await fetch(BACKEND + '/api/lcai-price');
+    const data = await resp.json();
+    if (data.price_usd && data.price_usd > 0) {
+      lcaiPriceUSD = data.price_usd;
+      const amt = Math.ceil(REPORT_PRICE_USD / lcaiPriceUSD);
+      ['pnl-lcai-equiv', 'report-lcai-equiv'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '~' + amt.toLocaleString();
+      });
+    }
+  } catch (e) { /* silent fail */ }
+}
+fetchLCAIPrice();
+
+// ── Populate year dropdowns dynamically ───────────────
+(function populateYears() {
+  const currentYear = new Date().getFullYear();
+  const START_YEAR = 2022;
+  ['pnl-year', 'report-year'].forEach(id => {
+    const sel = document.getElementById(id);
+    for (let y = currentYear; y >= START_YEAR; y--) {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      sel.appendChild(opt);
+    }
+  });
+})();
+
+// ── P&L ────────────────────────────────────────────────
+async function runPnL() {
+  if (pnlWallets.length === 0) { alert('Please add at least one wallet address.'); return; }
+  const chains = getActiveChains('pnl');
+  if (chains.length === 0) { alert('Please select at least one chain.'); return; }
+  const year             = document.getElementById('pnl-year').value;
+  const method           = document.getElementById('pnl-method').value;
+  const realizeCrypto    = document.getElementById('pnl-realize-crypto').checked;
+  const walletBased      = document.getElementById('pnl-wallet-based').checked;
+  const dustThreshold    = parseFloat(document.getElementById('pnl-dust').value) || 0;
+
+  setLoader('pnl', true, 'Fetching transaction history...');
+  showError('pnl', '');
+  document.getElementById('pnl-results').classList.add('result-hidden');
+
+  try {
+    setLoader('pnl', true, 'Calculating gains and losses...');
+    const resp = await fetch(BACKEND + '/api/pnl', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        wallets: pnlWallets, chains,
+        year: parseInt(year), limit: 20,
+        method,
+        realize_crypto_trades: realizeCrypto,
+        wallet_based: walletBased,
+        dust_threshold_usd: dustThreshold,
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Server error');
+    renderPnL(data);
+  } catch (e) {
+    showError('pnl', 'Error: ' + e.message + '. Please check the address and try again.');
+  }
+  setLoader('pnl', false);
+}
+
+function fmtUSD(val) {
+  if (val == null) return '—';
+  const abs = Math.abs(val);
+  let str;
+  if (abs >= 1000000) str = '$' + (abs / 1000000).toFixed(2) + 'M';
+  else if (abs >= 1000) str = '$' + (abs / 1000).toFixed(1) + 'K';
+  else str = '$' + abs.toFixed(2);
+  return (val < 0 ? '-' : '') + str;
+}
+
+function fmtSigned(val) {
+  if (val == null) return '—';
+  const sign = val >= 0 ? '+' : '';
+  const abs  = Math.abs(val);
+  let str;
+  if (abs >= 1000000) str = '$' + (abs / 1000000).toFixed(2) + 'M';
+  else if (abs >= 1000) str = '$' + (abs / 1000).toFixed(1) + 'K';
+  else str = '$' + abs.toFixed(2);
+  return sign + (val < 0 ? '-' : '') + str;
+}
+
+function colorClass(val) {
+  if (val == null) return 'pnl-neutral';
+  return val >= 0 ? 'pnl-up' : 'pnl-down';
+}
+
+function renderPnL(data) {
+  // ── Stats bar ─────────────────────────────────────────
+  const realized   = data.realized_gain_loss_usd ?? data.total_gain_loss_usd ?? 0;
+  const unrealized = data.unrealized_gain_loss_usd ?? null;
+  const portfolio  = data.portfolio_value_usd ?? null;
+  const totalIn    = data.total_in_usd ?? null;
+  const totalOut   = data.total_out_usd ?? null;
+
+  document.getElementById('stat-in').textContent = fmtUSD(totalIn);
+  document.getElementById('stat-in').className = 'stat-value pnl-neutral';
+
+  document.getElementById('stat-out').textContent = fmtUSD(totalOut);
+  document.getElementById('stat-out').className = 'stat-value pnl-neutral';
+
+  const realEl = document.getElementById('stat-realized');
+  realEl.textContent = fmtSigned(realized);
+  realEl.className   = 'stat-value ' + colorClass(realized);
+  document.getElementById('stat-realized-sub').textContent = realized >= 0 ? 'net gain' : 'net loss';
+
+  // ST/LT split sub-line
+  const stEl = document.getElementById('stat-st-lt');
+  const stVal = data.st_gain_loss_usd;
+  const ltVal = data.lt_gain_loss_usd;
+  if (stVal != null || ltVal != null) {
+    stEl.innerHTML =
+      '<span class="st-label">ST ' + fmtSigned(stVal || 0) + '</span>' +
+      '<span class="lt-label">LT ' + fmtSigned(ltVal || 0) + '</span>';
+  } else {
+    stEl.innerHTML = '';
+  }
+
+  const unrEl = document.getElementById('stat-unrealized');
+  if (unrealized != null) {
+    unrEl.textContent = fmtSigned(unrealized);
+    unrEl.className   = 'stat-value ' + colorClass(unrealized);
+  } else {
+    unrEl.textContent = '—';
+    unrEl.className   = 'stat-value pnl-neutral';
+  }
+
+  const portEl = document.getElementById('stat-portfolio');
+  portEl.textContent = portfolio != null ? fmtUSD(portfolio) : '—';
+  portEl.className   = 'stat-value pnl-neutral';
+
+  document.getElementById('pnl-tx-count').textContent = data.tx_count || 0;
+  document.getElementById('pnl-chains-sub').textContent = (data.chains_scanned || []).join(', ') || 'none';
+
+  // ── Holdings table ─────────────────────────────────────
+  const holdingsCard = document.getElementById('pnl-holdings-card');
+  const holdingsBody = document.getElementById('pnl-holdings-body');
+  const holdings     = data.holdings || [];
+
+  if (holdings.length > 0) {
+    holdingsCard.style.display = 'block';
+    holdingsBody.innerHTML = '';
+    holdings.forEach(h => {
+      const roi = h.roi_pct;
+      const unr = h.unrealized;
+      const row = document.createElement('tr');
+      row.innerHTML =
+        '<td><strong>' + (h.token || '?') + '</strong></td>' +
+        '<td>' + (h.chain || '—') + '</td>' +
+        '<td>' + (h.balance || '—') + '</td>' +
+        '<td>' + (h.cost_usd != null ? '$' + h.cost_usd.toFixed(2) : '—') + '</td>' +
+        '<td>' + (h.market_value != null ? '$' + h.market_value.toFixed(2) : '—') + '</td>' +
+        '<td class="' + (unr != null ? (unr >= 0 ? 'tx-gain' : 'tx-loss') : '') + '">' +
+          (unr != null ? (unr >= 0 ? '+' : '') + '$' + unr.toFixed(2) : '—') + '</td>' +
+        '<td class="' + (roi != null ? (roi >= 0 ? 'roi-up' : 'roi-down') : '') + '">' +
+          (roi != null ? (roi >= 0 ? '+' : '') + roi.toFixed(2) + '%' : '—') + '</td>';
+      holdingsBody.appendChild(row);
+    });
+  } else {
+    holdingsCard.style.display = 'none';
+  }
+
+  // ── Transaction table ──────────────────────────────────
+  const tbody = document.getElementById('pnl-tx-body');
+  tbody.innerHTML = '';
+  (data.transactions || []).forEach(tx => {
+    const gl = tx.gain_loss_usd;
+    const row = document.createElement('tr');
+    const termColors = { short: 'var(--yellow)', long: 'var(--purple)', mixed: 'var(--cyan)' };
+    const termColor  = tx.term ? termColors[tx.term] || 'var(--muted)' : 'var(--muted)';
+    row.innerHTML =
+      '<td>' + (tx.date || '—') + '</td>' +
+      '<td>' + (tx.chain || '—') + '</td>' +
+      '<td>' + (tx.type || '—') + '</td>' +
+      '<td>' + (tx.token || '—') + '</td>' +
+      '<td>' + (tx.amount || '—') + '</td>' +
+      '<td>' + (tx.price_usd ? '$' + tx.price_usd.toFixed(4) : '—') + '</td>' +
+      '<td class="' + (gl != null ? (gl >= 0 ? 'tx-gain' : 'tx-loss') : '') + '">' +
+        (gl != null ? (gl >= 0 ? '+' : '') + '$' + gl.toFixed(2) : '—') + '</td>' +
+      '<td style="color:' + termColor + ';font-size:12px;font-weight:600;">' + (tx.term || '—') + '</td>' +
+      '<td class="tx-hash">' + (tx.hash ? '<a href="' + (CHAIN_EXPLORERS[tx.chain] || '#') + tx.hash + '" target="_blank">' + tx.hash.slice(0,8) + '...</a>' : '—') + '</td>';
+    tbody.appendChild(row);
+  });
+  if (!data.transactions || data.transactions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px;">No transactions found for the selected filters.</td></tr>';
+  }
+  document.getElementById('pnl-results').classList.remove('result-hidden');
+}
+
+// ── CEX file ───────────────────────────────────────────
+function handleCexFile(input) {
+  if (!input.files[0]) return;
+  const file = input.files[0];
+  document.getElementById('cex-file-name').textContent = '✓ ' + file.name;
+  const reader = new FileReader();
+  reader.onload = e => { cexFileData = e.target.result; };
+  reader.readAsText(file);
+}
+
+// ── Wallet Picker ──────────────────────────────────────
+let _pickerScope = 'pnl';
+
+async function openWalletPicker(scope) {
+  if (!window.ethereum) {
+    alert('No wallet detected. Please open this page inside Trust Wallet\'s browser, or install a compatible wallet.');
+    return;
+  }
+  _pickerScope = scope;
+  try {
+    try {
+      await window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+    } catch(e) { /* not all wallets support this — fall through */ }
+
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const existing = scope === 'pnl' ? pnlWallets : reportWallets;
+    const available = accounts.filter(a => !existing.includes(a.toLowerCase()));
+
+    if (available.length === 0) {
+      alert('All accounts from this wallet are already added.');
+      return;
+    }
+
+    const list = document.getElementById('wallet-picker-list');
+    list.innerHTML = '';
+    available.forEach(addr => {
+      const item = document.createElement('div');
+      item.className = 'wallet-picker-item selected';
+      item.innerHTML = '<input type="checkbox" id="wp-' + addr + '" value="' + addr + '" checked>'
+        + '<label for="wp-' + addr + '" style="cursor:pointer;flex:1;">'
+        + '<div class="wallet-picker-addr">' + addr.slice(0,10) + '...' + addr.slice(-8) + '</div>'
+        + '<div class="wallet-picker-short">' + addr + '</div>'
+        + '</label>';
+      item.querySelector('input').addEventListener('change', function() {
+        item.classList.toggle('selected', this.checked);
+      });
+      list.appendChild(item);
+    });
+
+    openModal('modal-wallet-picker');
+  } catch(e) {
+    alert('Wallet connection failed: ' + e.message);
+  }
+}
+
+function addPickedWallets() {
+  const checked = document.querySelectorAll('#wallet-picker-list input[type=checkbox]:checked');
+  const list = _pickerScope === 'pnl' ? pnlWallets : reportWallets;
+  checked.forEach(cb => {
+    const addr = cb.value.toLowerCase();
+    if (!list.includes(addr)) list.push(addr);
+  });
+  renderWallets(_pickerScope);
+  closeModal('modal-wallet-picker');
+  const btnId = _pickerScope === 'pnl' ? 'pnl-connect-btn' : 'report-connect-addr-btn';
+  const btn = document.getElementById(btnId);
+  if (btn) { btn.textContent = '🔗 Connect More Wallets'; btn.style.color = 'var(--green)'; btn.style.borderColor = 'rgba(0,230,118,0.4)'; }
+}
+
+function connectWalletPnL()    { openWalletPicker('pnl'); }
+function connectWalletReport() { openWalletPicker('report'); }
+
+// ── Connect Wallet (Tax Report — also switches to Lightchain) ──
+async function connectWallet() {
+  try {
+    const addr = await _requestWalletAccount();
+    if (!addr) return;
+    connectedWallet = addr;
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: LIGHTCHAIN_CHAIN_ID_HEX }]
+      });
+    } catch (switchErr) {
+      if (switchErr.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{ chainId: LIGHTCHAIN_CHAIN_ID_HEX, chainName: 'Lightchain AI Mainnet', nativeCurrency: { name: 'LCAI', symbol: 'LCAI', decimals: 18 }, rpcUrls: [LIGHTCHAIN_RPC], blockExplorerUrls: ['https://mainnet.lightscan.app'] }]
+        });
+      }
+    }
+    document.getElementById('connect-btn').textContent = '✓ ' + connectedWallet.slice(0,6) + '...' + connectedWallet.slice(-4);
+    document.getElementById('connect-btn').style.color = 'var(--green)';
+    document.getElementById('connect-btn').style.borderColor = 'rgba(0,230,118,0.4)';
+    document.getElementById('pay-btn').disabled = false;
+  } catch (e) {
+    showError('report', 'Wallet connection failed: ' + e.message);
+  }
+}
+
+// ── Pay & Generate ─────────────────────────────────────
+async function payAndGenerate() {
+  if (!connectedWallet) { alert('Please connect your wallet first.'); return; }
+  const wallets = reportWallets;
+  if (wallets.length === 0 && !cexFileData) { alert('Please add at least one wallet address or upload a CEX CSV.'); return; }
+  const chains = getActiveChains('report');
+  const year = document.getElementById('report-year').value;
+  const method = document.getElementById('report-method').value;
+
+  const price = lcaiPriceUSD && lcaiPriceUSD > 0 ? lcaiPriceUSD : 0.004;
+  const lcaiAmount = Math.ceil(REPORT_PRICE_USD / price);
+  const lcaiWei = '0x' + (BigInt(lcaiAmount) * BigInt('1000000000000000000')).toString(16);
+
+  setPayStatus('report', 'pending', 'Waiting for payment confirmation...');
+  document.getElementById('pay-btn').disabled = true;
+
+  try {
+    const txHash = await window.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [{ from: connectedWallet, to: FEE_WALLET, value: lcaiWei, gas: '0x5208' }]
+    });
+    setPayStatus('report', 'pending', 'Payment sent (' + txHash.slice(0,12) + '...) — waiting for confirmation...');
+    setLoader('report', true, 'Verifying payment...');
+
+    await new Promise(r => setTimeout(r, 5000));
+
+    setLoader('report', true, 'Fetching your transaction history...');
+    const body = {
+      wallets, chains, year: parseInt(year), method,
+      tx_hash: txHash, payer: connectedWallet,
+      realize_crypto_trades: document.getElementById('report-realize-crypto').checked,
+      wallet_based: document.getElementById('report-wallet-based').checked,
+      dust_threshold_usd: parseFloat(document.getElementById('report-dust').value) || 0,
+    };
+    if (cexFileData) body.cex_csv = cexFileData;
+    if (document.getElementById('cex-type').value) body.cex_type = document.getElementById('cex-type').value;
+
+    const resp = await fetch(BACKEND + '/api/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || 'Report generation failed');
+    }
+
+    setLoader('report', true, 'Generating report files...');
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'OrcaTax-Report-' + year + '.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    setPayStatus('report', 'success', '✅ Payment confirmed and report downloaded! Save the file — it won\'t be stored anywhere.');
+    setLoader('report', false);
+    document.getElementById('pay-btn').disabled = false;
+  } catch (e) {
+    setPayStatus('report', 'error', 'Error: ' + e.message);
+    setLoader('report', false);
+    document.getElementById('pay-btn').disabled = false;
+    showError('report', e.message);
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────
+function setLoader(scope, active, msg) {
+  const el = document.getElementById(scope + '-loader');
+  if (active) { el.classList.add('active'); if (msg) document.getElementById(scope + '-loader-msg').textContent = msg; }
+  else el.classList.remove('active');
+}
+function showError(scope, msg) {
+  const el = document.getElementById(scope + '-error');
+  if (msg) { el.textContent = msg; el.classList.add('show'); }
+  else el.classList.remove('show');
+}
+function setPayStatus(scope, type, msg) {
+  const el = document.getElementById(scope + '-pay-status');
+  el.className = 'pay-status show ' + type;
+  el.textContent = msg;
+}
+</script>
+</body>
+</html>
